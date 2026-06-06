@@ -1,0 +1,49 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    # Esto activará el análisis cada vez que abras un Pull Request desde una rama feature hacia main
+    branches: [ "main" ]
+  schedule:
+    - cron: '30 1 * * 0' # Análisis de rutina todos los domingos a las 01:30 UTC
+
+jobs:
+  analyze:
+    name: Analyze Java Code
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Como es un proyecto Java, necesitas asegurarte de que el entorno de GitHub tenga el JDK instalado.
+    # Cámbialo a la versión de Java que use tu proyecto (17, 21, etc.)
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '25'
+        distribution: 'liberica'
+
+    # Inicializa las herramientas de CodeQL para Java
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: 'java'
+        # Opcional: Puedes usar 'security-extended' para un análisis aún más estricto
+        queries: security-extended 
+
+    # Autobuild intentará compilar tu proyecto usando Maven o Gradle automáticamente
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    # Ejecuta el análisis final una vez construido el binario
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:java"

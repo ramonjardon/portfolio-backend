@@ -41,7 +41,9 @@ jobs:
     # PASO NUEVO 2: Reemplazo manual de Autobuild
     # Compilamos el proyecto saltándonos los tests para ir directos al análisis
     - name: Custom Build for CodeQL
-      run: ./mvnw clean compile -DskipTests
+      run: ./mvnw -U clean compile -DskipTests
+      env:
+        MVNW_SKIP_CHECKSUM: true
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3.25.15

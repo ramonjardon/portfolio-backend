@@ -14,7 +14,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      security-events: write
 
     steps:
     - name: Checkout repository
@@ -37,6 +36,8 @@ jobs:
     - name: Grant execute permission for mvnw
       run: chmod +x ./mvnw
 
+    - name: Fix Windows line endings in wrapper properties
+      run: sed -i 's/\r$//' .mvn/wrapper/maven-wrapper.properties
     # PASO NUEVO 2: Reemplazo manual de Autobuild
     # Compilamos el proyecto saltándonos los tests para ir directos al análisis
     - name: Custom Build for CodeQL

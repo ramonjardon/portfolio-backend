@@ -16,26 +16,30 @@ jobs:
       contents: read
 
     steps:
-    # Versión exacta de checkout
     - name: Checkout repository
       uses: actions/checkout@v4.2.2
 
-    # Versión exacta de setup-java
     - name: Set up JDK
       uses: actions/setup-java@v4.7.0
       with:
         java-version: '25'
         distribution: 'liberica'
+        cache: 'maven' # Añadimos caché para que las dependencias se descarguen más rápido
 
-    # Versión exacta del ecosistema de CodeQL (v3 estable)
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3.25.15
       with:
         languages: 'java'
         queries: security-extended 
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3.25.15
+    # PASO NUEVO 1: Darle permisos de ejecución al wrapper de Maven
+    - name: Grant execute permission for mvnw
+      run: chmod +x id_or_path_to_mvnw ./mvnw
+
+    # PASO NUEVO 2: Reemplazo manual de Autobuild
+    # Compilamos el proyecto saltándonos los tests para ir directos al análisis
+    - name: Custom Build for CodeQL
+      run: ./mvnw clean compile -DskipTests
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3.25.15
@@ -43,7 +47,6 @@ jobs:
         category: "/language:java"
         upload: false
 
-    # Versión exacta de upload-artifact
     - name: Upload CodeQL Results as Artifact
       uses: actions/upload-artifact@v4.6.1
       with:

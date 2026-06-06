@@ -16,42 +16,34 @@ jobs:
       contents: read
 
     steps:
-    # Versión exacta de checkout
     - name: Checkout repository
       uses: actions/checkout@v4.2.2
 
-    # Versión exacta de setup-java
     - name: Set up JDK
       uses: actions/setup-java@v4.7.0
       with:
         java-version: '25'
         distribution: 'liberica'
-        cache: 'maven'
+        cache: 'maven' # Esto asegura que use tu caché local de dependencias
 
-    # Versión moderna de 2026 para soportar Java 25 (Fijada exactamente)
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3.28.10
       with:
         languages: 'java'
         queries: security-extended 
 
-    - name: Grant execute permission for mvnw
-      run: chmod +x ./mvnw
-
-    # Compilación limpia con tu wrapper saltando el checksum conflictivo
+    # SOLUCIÓN RADICAL: Usamos el comando nativo "mvn" del sistema operativo.
+    # Al ser un binario nativo, CodeQL lo intercepta al 100% sin perder el proceso.
+    # Como ya configuramos la caché arriba, NO descargará internet de nuevo.
     - name: Custom Build for CodeQL
-      run: ./mvnw clean compile -DskipTests
-      env:
-        MVNW_SKIP_CHECKSUM: true
+      run: mvn clean compile -DskipTests
 
-    # Versión moderna de análisis (Fijada exactamente)
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3.28.10
       with:
         category: "/language:java"
         upload: false
 
-    # Versión exacta de upload-artifact
     - name: Upload CodeQL Results as Artifact
       uses: actions/upload-artifact@v4.6.1
       with:

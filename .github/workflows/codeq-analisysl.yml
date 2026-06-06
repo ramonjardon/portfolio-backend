@@ -28,20 +28,20 @@ jobs:
         java-version: '25'
         distribution: 'liberica'
 
-    # github/codeql-action/init@v3.28.10
+    # github/codeql-action/init@v3.25.15 (SHA verificado)
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@b56ba49b26e5053ccc151721f62b72c915da9cd9
+      uses: github/codeql-action/init@4fa2a795b3401d4b1121803367f88102ff5765d8
       with:
         languages: 'java'
         queries: security-extended 
 
-    # github/codeql-action/autobuild@v3.28.10
+    # github/codeql-action/autobuild@v3.25.15 (SHA verificado)
     - name: Autobuild
-      uses: github/codeql-action/autobuild@b56ba49b26e5053ccc151721f62b72c915da9cd9
+      uses: github/codeql-action/autobuild@4fa2a795b3401d4b1121803367f88102ff5765d8
 
-    # github/codeql-action/analyze@v3.28.10
+    # github/codeql-action/analyze@v3.25.15 (SHA verificado)
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@b56ba49b26e5053ccc151721f62b72c915da9cd9
+      uses: github/codeql-action/analyze@4fa2a795b3401d4b1121803367f88102ff5765d8
       with:
         category: "/language:java"
         upload: false

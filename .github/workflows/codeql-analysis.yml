@@ -16,44 +16,45 @@ jobs:
       contents: read
 
     steps:
+    # Versión exacta de checkout
     - name: Checkout repository
       uses: actions/checkout@v4.2.2
 
+    # Versión exacta de setup-java
     - name: Set up JDK
       uses: actions/setup-java@v4.7.0
       with:
         java-version: '25'
         distribution: 'liberica'
-        cache: 'maven' # Añadimos caché para que las dependencias se descarguen más rápido
+        cache: 'maven'
 
+    # Versión moderna de 2026 para soportar Java 25 (Fijada exactamente)
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3.25.15
+      uses: github/codeql-action/init@v3.28.10
       with:
         languages: 'java'
         queries: security-extended 
 
-    # PASO NUEVO 1: Darle permisos de ejecución al wrapper de Maven
     - name: Grant execute permission for mvnw
       run: chmod +x ./mvnw
 
-    - name: Fix Windows line endings in wrapper properties
-      run: sed -i 's/\r$//' .mvn/wrapper/maven-wrapper.properties
-    # PASO NUEVO 2: Reemplazo manual de Autobuild
-    # Compilamos el proyecto saltándonos los tests para ir directos al análisis
+    # Compilación limpia con tu wrapper saltando el checksum conflictivo
     - name: Custom Build for CodeQL
-      run: ./mvnw -U clean compile -DskipTests
+      run: ./mvnw clean compile -DskipTests
       env:
         MVNW_SKIP_CHECKSUM: true
 
+    # Versión moderna de análisis (Fijada exactamente)
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3.25.15
+      uses: github/codeql-action/analyze@v3.28.10
       with:
         category: "/language:java"
         upload: false
 
+    # Versión exacta de upload-artifact
     - name: Upload CodeQL Results as Artifact
       uses: actions/upload-artifact@v4.6.1
       with:
         name: codeql-results-java
-        path: ../results/java.sarif
+        path: /home/runner/work/portfolio-backend/results/java.sarif
         retention-days: 7

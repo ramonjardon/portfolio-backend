@@ -15,9 +15,14 @@ spring:
       idle-timeout: 300000
       max-lifetime: 1200000
       
-
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: default
+        
   jpa:
     open-in-view: false
+
     hibernate:
       ddl-auto: none
     generate-ddl: false
@@ -76,7 +81,10 @@ spring:
     date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
     deserialization:
       fail-on-unknown-properties: false
-      
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
 server:
   port: ${PORT:8080}
   tomcat:

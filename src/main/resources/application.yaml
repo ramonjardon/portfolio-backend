@@ -49,29 +49,14 @@ spring:
     init:
       mode: never
   jackson:
-    # --- Fechas ---
-    # NOTA Jackson 3: write-dates-as-timestamps ya es FALSE por defecto.
-    # Solo lo declaramos explícitamente como documentación defensiva.
-    # La propiedad ahora vive bajo 'datatype.datetime', NO bajo 'serialization'.
     datatype:
       datetime:
         write-dates-as-timestamps: false
         write-durations-as-timestamps: false
-
-    # UTC global: Railway y local siempre alineados
     time-zone: UTC
-
-    # Formato con milisegundos y zona explícita (ej: 2026-06-06T23:58:00.000Z)
     date-format: yyyy-MM-dd'T'HH:mm:ss.SSSXXX
-
-    # --- Tamaño del JSON (memoria y red) ---
-    # Omite campos null en todas las respuestas
-    default-property-inclusion: non_null
-
-    # --- Resiliencia en deserialización ---
     deserialization:
-      fail-on-unknown-properties: false   # No rompe si llegan campos nuevos
-      fail-on-ignored-properties: false
+      fail-on-unknown-properties: false
       
 server:
   port: ${PORT:8080}
@@ -83,4 +68,4 @@ server:
     accept-count: 100
 app:
   async:
-   timeout: 5000
+    timeout: 5000

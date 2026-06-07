@@ -1,4 +1,4 @@
-package dev.ramonjardon.portfolio.infrastructure.config;
+package dev.ramonjardon.portfolio.backend.infrastructure.config;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;

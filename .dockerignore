@@ -1,0 +1,53 @@
+# ─── 1. DIRECTORIOS DE COMPILACIÓN (Imprescindible) ────────────────
+# Evita subir los binarios viejos, .class y empaquetados locales.
+# Si no ignoras esto, tu 'mvnw' dentro de Docker puede cruzarse con el target local.
+target/
+build/
+bin/
+out/
+
+# ─── 2. REPOSITORIOS Y CACHÉ LOCAL ─────────────────────────────────
+# Evita pasar tu caché local de dependencias. Queremos que la etapa 1 se encargue.
+.mvn/wrapper/maven-wrapper.jar
+**/.m2/
+**/.gradle/
+
+# ─── 3. ARCHIVOS DE CONFIGURACIÓN E IDEs ───────────────────────────
+# No aportan nada a la compilación y ensucian el contexto de Docker
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.nbproject/
+
+# ─── 4. REPORTES DE CALIDAD Y TEST (Muy importante para Snyk) ─────
+# Evita meter reportes antiguos de Jacoco, Sonar o Karate en el contexto
+.scannerwork/
+.sonar/
+*htmlreport/
+karate-reports/
+**/surefire-reports/
+**/failsafe-reports/
+.nyc_output/
+coverage/
+
+# ─── 5. SISTEMA OPERATIVO Y LOGS ──────────────────────────────────
+# Basura del sistema o logs locales que puedan contener trazas sensibles
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+
+# ─── 6. DOCUMENTACIÓN Y CI/CD ──────────────────────────────────────
+# Tu pipeline de GitHub Actions (.github) no lo necesita el compilador de Java
+.git
+.github/
+README.md
+LICENSE
+architecture.png

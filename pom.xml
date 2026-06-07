@@ -34,6 +34,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>		
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -46,6 +50,11 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
@@ -55,6 +64,24 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.hibernate.orm</groupId>
+				<artifactId>hibernate-maven-plugin</artifactId>
+				<version>${hibernate.version}</version>
+				<executions>
+				<execution>
+					<id>enhance</id>
+					<goals>
+					<goal>enhance</goal>
+					</goals>
+					<configuration>
+                		<enableDirtyTracking>true</enableDirtyTracking>
+                		<enableLazyInitialization>true</enableLazyInitialization>
+                		<enableAssociationManagement>true</enableAssociationManagement>
+            		</configuration>
+				</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.graalvm.buildtools</groupId>
 				<artifactId>native-maven-plugin</artifactId>

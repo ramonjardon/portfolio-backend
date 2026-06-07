@@ -32,16 +32,18 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
  # 🚀 PASO UNIFICADO: Compila, ejecuta JaCoCo y manda los datos a SonarCloud
-      - name: Build and analyze
+      - name: Build and analyze (SonarCloud)
+        # 🔒 Pasamos TODOS los secretos de forma segura a la memoria como variables de entorno
         env:
-          # Inyectamos el GITHUB_TOKEN (lo da GitHub solo) y tu SONAR_TOKEN secreto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Usamos tu ./mvnw para asegurar compatibilidad de tu arquitectura hexagonal
+          SONAR_ORG: ${{ secrets.SONAR_ORGANIZATION }}
+          SONAR_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        # 🚀 En 'run' invocamos las variables nativas de Linux con el símbolo '$'
         run: |
           ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=$SONAR_ORG \
+            -Dsonar.projectKey=$SONAR_KEY \
             -Dsonar.host.url=https://sonarcloud.io
 
       # 📊 PASO EXTRA: Sube el mismo reporte de cobertura generado a Codecov

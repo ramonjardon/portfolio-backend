@@ -88,7 +88,7 @@ jobs:
 
       # 🛡️ ANÁLISIS DE DEPENDENCIAS: Snyk CLI (hereda el JDK 25 de Liberica sin conflictos)
       - name: Setup Snyk CLI
-        uses: snyk/actions/setup@b98d4d162f170cf9f5e1383870817088b64e5659 # SHA monorepo snyk/actions
+        uses: snyk/actions/setup@86b1cee1b8e110a78d528b3e1328a80e218111d2 # SHA monorepo snyk/actions
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
@@ -100,7 +100,7 @@ jobs:
         run: snyk test --severity-threshold=high --sarif-file-output=snyk.sarif
 
       - name: Upload Snyk result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@662472033e0ac5af314051d535de92a01ba291d4 # v3.25.10
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3 # v3.25.10
         with:
           sarif_file: snyk.sarif
           category: snyk-oss
@@ -201,7 +201,7 @@ jobs:
 
       # 📤 Subimos el informe de Trivy a la pestaña "Security" de GitHub
       - name: Subir resultados Trivy a GitHub Security
-        uses: github/codeql-action/upload-sarif@662472033e0ac5af314051d535de92a01ba291d4 # v3.25.10
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3 # v3.25.10
         if: always()
         with:
           sarif_file: trivy-image.sarif

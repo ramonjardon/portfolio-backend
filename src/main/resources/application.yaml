@@ -9,9 +9,9 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     hikari:        # Par obligatorio de provider_disables_autocommit
-      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE}        # ~5-10MB por conexión; ajusta según plan Railway
-      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MIN_IDLE}
-      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT}
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE:10}        # ~5-10MB por conexión; ajusta según plan Railway
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MIN_IDLE:1}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:3000}
       idle-timeout: 300000
       max-lifetime: 1200000
       

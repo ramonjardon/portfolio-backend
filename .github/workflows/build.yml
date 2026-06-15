@@ -1,0 +1,243 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Variables globales reutilizadas en ambos jobs
+# ─────────────────────────────────────────────────────────────────────────────
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+
+# ═════════════════════════════════════════════════════════════════════════════
+# JOB 1 ── Build · SonarCloud · CodeCov · Snyk · GraalVM Native Compile
+# ═════════════════════════════════════════════════════════════════════════════
+  build-and-analyze:
+    name: Build · Sonar · CodeCov · Snyk
+    runs-on: ubuntu-latest
+
+    # 🔒 Permisos acotados: Este job SOLO necesita leer el código y subir el SARIF de Snyk
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          java-version: '25'
+          distribution: 'liberica'
+          cache: 'maven'
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache Maven packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      # 🚀 FASE 1: Tests + JaCoCo + SonarCloud
+      # Sin -Pnative para no interferir con la instrumentación de JaCoCo.
+      # Si se activa el perfil native aquí, el agente de cobertura no puede
+      # instrumentar el bytecode y la cobertura llega a Sonar y CodeCov como 0%.
+      - name: Build, test and analyze (SonarCloud)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ secrets.SONAR_ORGANIZATION }}
+          SONAR_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        run: |
+          ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.organization=$SONAR_ORG \
+            -Dsonar.projectKey=$SONAR_KEY \
+            -Dsonar.host.url=https://sonarcloud.io
+
+      # 📊 Sube el reporte de cobertura generado a Codecov (v7 con Attestation Sigstore)
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./**/target/site/jacoco/jacoco.xml
+          fail_ci_if_error: true
+
+      # 🔨 FASE 2: Compilación del binario nativo
+      # -DskipTests porque los tests ya corrieron en la fase anterior.
+      # --gc=G1 alineado con el argumento del Dockerfile.
+      - name: Native compile (GraalVM / Liberica NIK)
+        run: |
+          ./mvnw -B -Pnative native:compile -DskipTests \
+            "-Dspring-boot.native-image.builder-arguments=--gc=G1"
+
+      # 🛡️ ANÁLISIS DE DEPENDENCIAS: Snyk CLI (hereda el JDK 25 de Liberica sin conflictos)
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@86b1cee1b8e110a78d528b3e1328a80e218111d2 # SHA monorepo snyk/actions
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # 🔍 Test: genera el reporte SARIF para GitHub Code Scanning
+      - name: Run Snyk to check for vulnerabilities
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --severity-threshold=high --sarif-file-output=snyk.sarif
+
+      - name: Upload Snyk result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3 # v3.25.10
+        with:
+          sarif_file: snyk.sarif
+          category: snyk-oss
+
+      # 📡 Monitor: registra un snapshot en el panel de Snyk tras cada merge a main
+      - name: Snyk monitor (registro en panel Snyk)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor
+
+      # 🏺 ARTEFACTO: Guardamos el binario nativo generado por GraalVM para pasarlo al siguiente job
+      - name: Guardar binario nativo como artefacto entre jobs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: app-native
+          path: target/portfolio-backend
+          retention-days: 1
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# JOB 2 ── Docker build · Trivy scan · Push a GHCR
+# Solo se ejecuta si el job anterior completó correctamente
+# ═════════════════════════════════════════════════════════════════════════════
+  docker-build-scan-push:
+    name: Docker · Trivy · GHCR
+    runs-on: ubuntu-latest
+    needs: build-and-analyze
+
+    # 🔒 Permisos acotados: Escritura en paquetes (GHCR) y en alertas de seguridad (Trivy SARIF)
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # 📦 Descargamos directamente el binario nativo compilado en el Job 1
+      - name: Descargar binario nativo del job anterior
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.6.2
+        with:
+          name: app-native
+          path: target/
+
+      # El Dockerfile espera el binario en target/portfolio-backend con permisos de ejecución.
+      # download-artifact no preserva los permisos del sistema de ficheros, hay que restaurarlos.
+      - name: Restaurar permisos de ejecución del binario
+        run: chmod +x target/portfolio-backend
+
+      # 🐳 Configurar Docker Buildx
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@b5730b69cc30ea7ab96c6b2a4f24e7c3bf3f4579 # v3.10.0
+
+      # 🔑 Login en GitHub Container Registry
+      - name: Login en GitHub Container Registry (GHCR)
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 🏷️ Generar tags y labels automáticos para la imagen
+      - name: Extraer metadatos de imagen (tags + labels OCI)
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbea8a61ccc9edd78a3e7e9a9003 # v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # 🔨 BUILD de la imagen — sin push todavía. 'load: true' la inyecta localmente para Trivy
+      - name: Build imagen Docker (sin push)
+        id: build
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 🔍 TRIVY — Escanea la imagen buscando vulnerabilidades CRITICAL/HIGH antes de publicar
+      - name: Escaneo de vulnerabilidades Trivy sobre la imagen
+        id: trivy
+        uses: aquasecurity/trivy-action@18f2510ee269b9d5043831457b039472dc066534 # v0.28.0
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      # 📤 Subimos el informe de Trivy a la pestaña "Security" de GitHub
+      - name: Subir resultados Trivy a GitHub Security
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357  # v3 # v3.25.10
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+      # 🚀 PUSH FINAL a GHCR — Solo llega aquí si Trivy no encontró CRITICAL/HIGH.
+      - name: Push imagen limpia a GHCR
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 📋 Resumen visible en la UI de GitHub Actions al finalizar el workflow.
+      # Todas las expresiones ${{ }} se mapean a variables de entorno para evitar
+      # script injection si algún valor contuviera caracteres especiales.
+      - name: Resumen del pipeline
+        if: always()
+        env:
+          GH_SHA: ${{ github.sha }}
+          GH_REF_NAME: ${{ github.ref_name }}
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+          REGISTRY_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          echo "## 📦 Imagen publicada en GHCR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit SHA | \`$GH_SHA\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rama | \`$GH_REF_NAME\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry | \`$REGISTRY_IMAGE\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags generados:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$META_TAGS" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

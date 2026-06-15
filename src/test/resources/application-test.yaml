@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    hikari:
+      auto-commit: false                        # defaultAutoCommit=false
+      data-source-properties:
+        sslmode: disable
+        channelBinding: prefer
+        prepareThreshold: 5
+        preparedStatementCacheSize: 250
+        preparedStatementCacheSqlLimit: 30 

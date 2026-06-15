@@ -1,0 +1,30 @@
+services:
+ db-local:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=portfolio_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=UTC
+      - PGTZ=UTC
+
+ portfolio-backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.local
+    
+    ports:
+      - "8080:8080"
+    environment:
+      # Se conecta al bouncer usando el nombre del servicio y su puerto INTERNO
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE= ${SPRING_DATASOURCE_HIKARI_MAX_POOL_SIZE}
+      - SERVER_TOMCAT_THREADS_MAX= ${SERVER_TOMCAT_THREADS_MAX}
+      - SERVER_TOMCAT_MAX_CONNECTIONS= ${SERVER_TOMCAT_MAX_CONNECTIONS}
+      - SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT=${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT}
+      - SPRING_DATASOURCE_HIKARI_MIN_IDLE=${SPRING_DATASOURCE_HIKARI_MIN_IDLE}
+
+    depends_on:
+      - db-local
